@@ -23,6 +23,16 @@
 
 void Exiting(int);
 
+void timeinfo()
+{
+    time_t rawtime;
+    struct tm* timeinfo;
+
+    time(&rawtime);
+    timeinfo = localtime(&rawtime);
+    printf("local time is: %s\n", asctime(timeinfo));
+}
+
 static int GPIOExport(int pin)
 {
 #define BUFFER_MAX 3
@@ -136,41 +146,52 @@ void help()
 	printf("    -q - quiet\n");
 }
 
-int GPIORead(int i, struct timespec* a){
-        int val = 1;
-        int current_state = i;
-        FILE* gpio_val;
-        gpio_val = fopen( "/sys/class/gpio/gpio21/value","r");                                                               
-        fscanf(gpio_val,"%d",&val);                                                                                                       //считываем нажатие кнопки
-        if(val == 0){
-                clock_gettime(CLOCK_REALTIME,a);
-                printf("\nhours\t%d  :%d :%d\n",a->tv_nsec%86400/3600, a->tv_nsec%3600/60, a->tv_sec%60);                                 //выводим время нажатия кнопки в консоль
-                switch (current_state){                                                                                                   //переключаем светодиоды
-                        case1:
-                        GPIOWrite(LEDR, 0);
-                        GPIOWrite(LEDY, 0);
-                        GPIOWrite(LEDG, 1);
-                        return 2;
-                        usleep(500000);
-                        case2:
-                        GPIOWrite(LEDR, 1);
-                        GPIOWrite(LEDY, 0);
-                        GPIOWrite(LEDG, 0);
-                        usleep(500000);
-                        return 3;
-                         case3:
-                        GPIOWrite(LEDR, 0);
-                        GPIOWrite(LEDY, 1);
-                        GPIOWrite(LEDG, 0);
-                        usleep(500000);
-                        return 1;
-                        }
-                printf("\nButton pressed\n");
-                fflush(stdout);
-        }else{
-        return i;
+int GPIOReader(int current_value, int delay)
+{
+    FILE* fd = fopen("/sys/class/gpio/gpio22/value", "r");
+    int a = 1;
+    fscanf(fd, "%d", &a);
+    printf("A is: %d\n", a);
+
+    if(a == 0)
+    {
+        timeinfo();
+        if(current_value == 0)
+        {
+            GPIOWrite(LEDR, 0);
+            GPIOWrite(LEDY, 1);
+            GPIOWrite(LEDG, 0);
+            printf("[button]: Light:R\n");
+            fflush(stdout);
+            usleep(delay/5);
+
+            return 0;
         }
-        fclose(gpio_val);
+        else if(current_value == 1)
+        {
+            GPIOWrite(LEDR, 0);
+            GPIOWrite(LEDY, 0);
+            GPIOWrite(LEDG, 1);
+            printf("[button]: Light:G\n");
+            fflush(stdout);
+            usleep(delay/5);
+
+            return 0;
+        }
+        else if(current_value == 2)
+        {
+            GPIOWrite(LEDR, 0);
+            GPIOWrite(LEDY, 1);
+            GPIOWrite(LEDG, 0);
+            printf("[button]: Light:Y\n");
+            fflush(stdout);
+            usleep(delay/5);
+
+            return 0;
+        }
+    }
+
+    return 1;
 }
 
 int main(int argc, char *argv[])
@@ -206,33 +227,50 @@ int main(int argc, char *argv[])
 	GPIODirection(LEDY, OUT);
 	GPIODirection(LEDG, OUT);
 
-	int i=1;
-  struct timespec mt1;
-  clock_gettime(CLOCK_REALTIME,&mt1);
-  sleep(0.5);
+    int current_value = 0;
+    sleep(0.5);
+	while (1) {
+        current_value = 0;
+        if(GPIOReader(current_value, delay) == 1)
+        {
+            GPIOWrite(LEDR, 1);
+		    GPIOWrite(LEDY, 0);
+		    GPIOWrite(LEDG, 0);
+		    printf("Light:R\n");
+		    fflush(stdout);
+            if(GPIOReader(current_value, delay) == 1)
+            {
+		        usleep(delay);
+            }
+        }
 
-  while (1) {
-           i = GPIORead(i,&mt1);
-           GPIOWrite(LEDR, 1);
-           GPIOWrite(LEDY, 0);
-           GPIOWrite(LEDG, 0);
-           printf("Light:R\n");
-           fflush(stdout);
-           usleep(delay);
-           i = GPIORead(i, &mt1);
-           GPIOWrite(LEDR, 0);
-           GPIOWrite(LEDY, 1);
-           GPIOWrite(LEDG, 0);
-           printf("Light:Y\n");
-           fflush(stdout);
-           usleep(delay);
-           i = GPIORead(i, &mt1);
-           GPIOWrite(LEDR, 0);
-           GPIOWrite(LEDY, 0);
-           GPIOWrite(LEDG, 1);
-           printf("Light:G\n");
-           fflush(stdout);
-           usleep(delay);
-   }
-        return 0;
+        current_value = 1;
+        if(GPIOReader(current_value, delay) == 1)
+        {
+            GPIOWrite(LEDR, 0);
+		    GPIOWrite(LEDY, 1);
+		    GPIOWrite(LEDG, 0);
+		    printf("Light:Y\n");
+		    fflush(stdout);
+		    if(GPIOReader(current_value, delay) == 1)
+            {
+		        usleep(delay);
+            }
+        }
+
+        current_value = 2;
+        if(GPIOReader(current_value, delay) == 1)
+        {
+            GPIOWrite(LEDR, 0);
+		    GPIOWrite(LEDY, 0);
+		    GPIOWrite(LEDG, 1);
+		    printf("Light:G\n");
+		    fflush(stdout);
+		    if(GPIOReader(current_value, delay) == 1)
+            {
+		        usleep(delay);
+            }
+        }
+	}
+	return 0;
 }
