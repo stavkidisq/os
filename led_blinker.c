@@ -194,10 +194,21 @@ int GPIOReader(int current_value, int delay)
     return 1;
 }
 
+void write_to_fifo(int fd, int color)
+{
+    printf("fd %d\n", fd);
+
+    char* color_char = (char*)malloc(sizeof(char)*10);
+    sprintf(color_char, "%d", color);
+
+    write(fd, (void*)color_char, 10);
+    fflush(stdout);
+}
+
 int main(int argc, char *argv[])
 {
 	int quiet = 0;
-	if (argc > 1) {
+	if (argc > 2) {
 		if ((strcmp(argv[1], "-h") == 0)) {
 			help();
 			return 0;
@@ -208,7 +219,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if ((quiet && argc != 3) || (!quiet && argc != 2)) {
+	if ((quiet && argc != 4) || (!quiet && argc != 3)) {
 		help();
 		return 0;
 	}
@@ -229,8 +240,13 @@ int main(int argc, char *argv[])
 
     int current_value = 0;
     sleep(0.5);
+
+    int fd = open(argv[2], O_WRONLY);
+
 	while (1) {
         current_value = 0;
+
+        write_to_fifo(fd, current_value);
         if(GPIOReader(current_value, delay) == 1)
         {
             GPIOWrite(LEDR, 1);
@@ -238,13 +254,12 @@ int main(int argc, char *argv[])
 		    GPIOWrite(LEDG, 0);
 		    printf("Light:R\n");
 		    fflush(stdout);
-            if(GPIOReader(current_value, delay) == 1)
-            {
-		        usleep(delay);
-            }
+		    usleep(delay);
         }
 
         current_value = 1;
+
+        write_to_fifo(fd, current_value);
         if(GPIOReader(current_value, delay) == 1)
         {
             GPIOWrite(LEDR, 0);
@@ -252,13 +267,12 @@ int main(int argc, char *argv[])
 		    GPIOWrite(LEDG, 0);
 		    printf("Light:Y\n");
 		    fflush(stdout);
-		    if(GPIOReader(current_value, delay) == 1)
-            {
-		        usleep(delay);
-            }
+		    usleep(delay);
         }
 
         current_value = 2;
+
+        write_to_fifo(fd, current_value);
         if(GPIOReader(current_value, delay) == 1)
         {
             GPIOWrite(LEDR, 0);
@@ -266,11 +280,11 @@ int main(int argc, char *argv[])
 		    GPIOWrite(LEDG, 1);
 		    printf("Light:G\n");
 		    fflush(stdout);
-		    if(GPIOReader(current_value, delay) == 1)
-            {
-		        usleep(delay);
-            }
+		    usleep(delay);
         }
 	}
+
+    close(fd);
+
 	return 0;
 }
