@@ -8,16 +8,16 @@
 #include <string.h>
 #include <time.h>
 
-#define IN 0
-#define OUT 1
+#define IN  0
+#define OUT  1
 
-#define LOW 0
-#define HIGH 1
+#define LOW  0
+#define HIGH  1
 
 //***************************//
-#define LEDR 24
-#define LEDY 10
-#define LEDG 9
+#define LEDR  24
+#define LEDY  10
+#define LEDG  9
 //***************************//
 #define VALUE_MAX 30
 
@@ -140,7 +140,7 @@ int GPIORead(int i, struct timespec* a){
         int val = 1;
         int current_state = i;
         FILE* gpio_val;
-        gpio_val = fopen( "/sys/class/gpio/gpio21/value","r");                                                               
+        gpio_val = fopen( "/sys/class/gpio/gpio22/value","r");                                                               
         fscanf(gpio_val,"%d",&val);                                                                                                       //считываем нажатие кнопки
         if(val == 0){
                 clock_gettime(CLOCK_REALTIME,a);
@@ -172,6 +172,21 @@ int GPIORead(int i, struct timespec* a){
         }
         fclose(gpio_val);
 }
+
+void write_to_fifo(char* fifo_name,char* current_value)
+{
+	char* fifo = fifo_name;
+	int fd = open(fifo, O_WRONLY);
+        printf("%d", fd);
+        fflush(stdin);
+        char cr[3];
+        cr[0] = *current_value;
+	cr[1] = *(current_value+1);
+	cr[2] = *(current_value+2);
+        write(fd, cr, 3);                                                         
+        fflush(stdout);
+        close(fd);
+	}
 
 int main(int argc, char *argv[])
 {
@@ -210,13 +225,13 @@ int main(int argc, char *argv[])
   struct timespec mt1;
   clock_gettime(CLOCK_REALTIME,&mt1);
   sleep(0.5);
-
   while (1) {
            i = GPIORead(i,&mt1);
            GPIOWrite(LEDR, 1);
            GPIOWrite(LEDY, 0);
            GPIOWrite(LEDG, 0);
            printf("Light:R\n");
+           write_to_fifo(argv[2],"100");
            fflush(stdout);
            usleep(delay);
            i = GPIORead(i, &mt1);
@@ -224,6 +239,7 @@ int main(int argc, char *argv[])
            GPIOWrite(LEDY, 1);
            GPIOWrite(LEDG, 0);
            printf("Light:Y\n");
+	   write_to_fifo(argv[2],"010");
            fflush(stdout);
            usleep(delay);
            i = GPIORead(i, &mt1);
@@ -231,6 +247,7 @@ int main(int argc, char *argv[])
            GPIOWrite(LEDY, 0);
            GPIOWrite(LEDG, 1);
            printf("Light:G\n");
+	   write_to_fifo(argv[2],"001");
            fflush(stdout);
            usleep(delay);
    }
