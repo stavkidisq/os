@@ -23,16 +23,6 @@
 
 void Exiting(int);
 
-void timeinfo()
-{
-    time_t rawtime;
-    struct tm* timeinfo;
-
-    time(&rawtime);
-    timeinfo = localtime(&rawtime);
-    printf("local time is: %s\n", asctime(timeinfo));
-}
-
 static int GPIOExport(int pin)
 {
 #define BUFFER_MAX 3
@@ -146,70 +136,28 @@ void help()
 	printf("    -q - quiet\n");
 }
 
-int GPIOReader(int current_value, int delay)
+void sigfunc(int sig)
 {
-    FILE* fd = fopen("/sys/class/gpio/gpio22/value", "r");
-    int a = 1;
-    fscanf(fd, "%d", &a);
-    printf("A is: %d\n", a);
+    int fd = open("fifo_exit_led_blinker", O_WRONLY);
 
-    if(a == 0)
-    {
-        timeinfo();
-        if(current_value == 0)
-        {
-            GPIOWrite(LEDR, 0);
-            GPIOWrite(LEDY, 1);
-            GPIOWrite(LEDG, 0);
-            printf("[button]: Light:R\n");
-            fflush(stdout);
-            usleep(delay/5);
-
-            return 0;
-        }
-        else if(current_value == 1)
-        {
-            GPIOWrite(LEDR, 0);
-            GPIOWrite(LEDY, 0);
-            GPIOWrite(LEDG, 1);
-            printf("[button]: Light:G\n");
-            fflush(stdout);
-            usleep(delay/5);
-
-            return 0;
-        }
-        else if(current_value == 2)
-        {
-            GPIOWrite(LEDR, 0);
-            GPIOWrite(LEDY, 1);
-            GPIOWrite(LEDG, 0);
-            printf("[button]: Light:Y\n");
-            fflush(stdout);
-            usleep(delay/5);
-
-            return 0;
-        }
+    printf("SIG IS %d!!!!!!!!!!!!!!", sig);
+    char c;
+    if (sig != SIGINT)
+        return;
+    else {
+        printf("exit!!!!!!!!!!!!!!!!");
+        write(fd, "led_blinker stopped!", 25);
+        exit(0);
     }
 
-    return 1;
+    close(fd);
 }
 
-void write_to_fifo(int fd, int color)
-{
-    printf("fd %d\n", fd);
-
-    char* color_char = (char*)malloc(sizeof(char)*10);
-    sprintf(color_char, "%d", color);
-
-    write(fd, (void*)color_char, 10);
-    write(fd, "\n", 1);
-    fflush(stdout);
-}
 
 int main(int argc, char *argv[])
 {
 	int quiet = 0;
-	if (argc > 2) {
+	if (argc > 1) {
 		if ((strcmp(argv[1], "-h") == 0)) {
 			help();
 			return 0;
@@ -220,13 +168,18 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if ((quiet && argc != 4) || (!quiet && argc != 3)) {
+	if ((quiet && argc != 3) || (!quiet && argc != 2)) {
 		help();
 		return 0;
 	}
 
+    struct sigaction sa;
+    sa.sa_handler = sigfunc;
+    sa.sa_flags = SA_RESTART;
+    sigaction(SIGINT, &sa, 0);
+
 	if (!quiet)
-		printf("\nThe led blinker application was started\n\n");
+		printf("");
 	int argument = 1;
 	if (quiet)
 		argument++;
@@ -239,53 +192,26 @@ int main(int argc, char *argv[])
 	GPIODirection(LEDY, OUT);
 	GPIODirection(LEDG, OUT);
 
-    int current_value = 0;
-    sleep(0.5);
-
-    int fd = open(argv[2], O_WRONLY);
-
+	sleep(0.5);
 	while (1) {
-        current_value = 0;
-
-        write_to_fifo(fd, current_value);
-        if(GPIOReader(current_value, delay) == 1)
-        {
-            GPIOWrite(LEDR, 1);
-		    GPIOWrite(LEDY, 0);
-		    GPIOWrite(LEDG, 0);
-		    printf("Light:R\n");
-		    fflush(stdout);
-		    usleep(delay);
-        }
-
-        current_value = 1;
-
-        write_to_fifo(fd, current_value);
-        if(GPIOReader(current_value, delay) == 1)
-        {
-            GPIOWrite(LEDR, 0);
-		    GPIOWrite(LEDY, 1);
-		    GPIOWrite(LEDG, 0);
-		    printf("Light:Y\n");
-		    fflush(stdout);
-		    usleep(delay);
-        }
-
-        current_value = 2;
-
-        write_to_fifo(fd, current_value);
-        if(GPIOReader(current_value, delay) == 1)
-        {
-            GPIOWrite(LEDR, 0);
-		    GPIOWrite(LEDY, 0);
-		    GPIOWrite(LEDG, 1);
-		    printf("Light:G\n");
-		    fflush(stdout);
-		    usleep(delay);
-        }
+		GPIOWrite(LEDR, 1);
+		GPIOWrite(LEDY, 0);
+		GPIOWrite(LEDG, 0);
+		printf("R\n");
+		fflush(stdout);
+		usleep(delay);
+		GPIOWrite(LEDR, 0);
+		GPIOWrite(LEDY, 1);
+		GPIOWrite(LEDG, 0);
+		printf("Y\n");
+		fflush(stdout);
+		usleep(delay);
+		GPIOWrite(LEDR, 0);
+		GPIOWrite(LEDY, 0);
+		GPIOWrite(LEDG, 1);
+		printf("G\n");
+		fflush(stdout);
+		usleep(delay);
 	}
-
-    close(fd);
-
 	return 0;
 }
