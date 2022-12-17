@@ -7,6 +7,16 @@
 #include <unistd.h>
 #include <time.h>
 
+void timeinfo()
+{
+    time_t rawtime;
+    struct tm* timeinfo;
+
+    time(&rawtime);
+    timeinfo = localtime(&rawtime);
+    printf("local time is: %s", asctime(timeinfo));
+}
+
 int main(int argc, char* argv[])
 {
     char color[128];
@@ -16,13 +26,17 @@ int main(int argc, char* argv[])
 
     while(1)
     {
+        timeinfo();
+
         read(fd_color_sense, color_read, 256);
-        printf("from color_sense: %s\n", color_read);
+        printf("from color_sense: %s", color_read);
         fflush(stdout);
 
         read(fd_led_blinker, color, 256);
-        printf("from led_blinker: %s\n", color);
+        printf("from led_blinker: %s", color);
         fflush(stdout);
+
+        printf("\n");
 
         sleep(2);
     }
