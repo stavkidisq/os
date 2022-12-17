@@ -8,16 +8,16 @@
 #include <string.h>
 #include <time.h>
 
-#define IN 0
-#define OUT 1
+#define IN  0
+#define OUT  1
 
-#define LOW 0
-#define HIGH 1
+#define LOW  0
+#define HIGH  1
 
 //***************************//
-#define LEDR 24
-#define LEDY 10
-#define LEDG 9
+#define LEDR  24
+#define LEDY  10
+#define LEDG  9
 //***************************//
 #define VALUE_MAX 30
 
@@ -136,24 +136,6 @@ void help()
 	printf("    -q - quiet\n");
 }
 
-void sigfunc(int sig)
-{
-    int fd = open("fifo_exit_led_blinker", O_WRONLY);
-
-    printf("SIG IS %d!!!!!!!!!!!!!!", sig);
-    char c;
-    if (sig != SIGINT)
-        return;
-    else {
-        printf("exit!!!!!!!!!!!!!!!!");
-        write(fd, "led_blinker stopped!", 25);
-        exit(0);
-    }
-
-    close(fd);
-}
-
-
 int main(int argc, char *argv[])
 {
 	int quiet = 0;
@@ -191,27 +173,4 @@ int main(int argc, char *argv[])
 	GPIODirection(LEDR, OUT);
 	GPIODirection(LEDY, OUT);
 	GPIODirection(LEDG, OUT);
-
-	sleep(0.5);
-	while (1) {
-		GPIOWrite(LEDR, 1);
-		GPIOWrite(LEDY, 0);
-		GPIOWrite(LEDG, 0);
-		printf("R\n");
-		fflush(stdout);
-		usleep(delay);
-		GPIOWrite(LEDR, 0);
-		GPIOWrite(LEDY, 1);
-		GPIOWrite(LEDG, 0);
-		printf("Y\n");
-		fflush(stdout);
-		usleep(delay);
-		GPIOWrite(LEDR, 0);
-		GPIOWrite(LEDY, 0);
-		GPIOWrite(LEDG, 1);
-		printf("G\n");
-		fflush(stdout);
-		usleep(delay);
-	}
-	return 0;
 }
