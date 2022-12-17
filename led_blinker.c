@@ -202,6 +202,7 @@ void write_to_fifo(int fd, int color)
     sprintf(color_char, "%d", color);
 
     write(fd, (void*)color_char, 10);
+    write(fd, "\n", 1);
     fflush(stdout);
 }
 
